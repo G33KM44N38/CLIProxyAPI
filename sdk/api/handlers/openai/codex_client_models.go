@@ -11,7 +11,11 @@ func (h *OpenAIAPIHandler) codexClientModelsResponse(clientVersion ...string) ma
 		version = clientVersion[0]
 	}
 	optimizeMultiAgentV2 := h != nil && h.Cfg != nil && h.Cfg.CodexOptimizeMultiAgentV2
-	return codexmodels.BuildResponseForClient(h.Models(), registry.GetGlobalRegistry().GetModelProviders, optimizeMultiAgentV2, version)
+	payload := codexmodels.BuildResponseForClient(h.Models(), registry.GetGlobalRegistry().GetModelProviders, optimizeMultiAgentV2, version)
+	if h != nil && h.Cfg != nil {
+		payload["models"] = codexmodels.WithoutPrefixAliases(payload["models"].([]map[string]any), h.Cfg.Client.Codex.ModelCatalogExcludePrefix)
+	}
+	return payload
 }
 
 // CodexClientModelsResponse builds a Codex client model response.

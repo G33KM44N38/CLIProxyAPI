@@ -6,6 +6,7 @@ package config
 
 // SDKConfig represents the application's configuration, loaded from a YAML file.
 type SDKConfig struct {
+	Client ClientConfig `yaml:"client" json:"client"`
 	// ProxyURL is the URL of an optional proxy server to use for outbound requests.
 	ProxyURL string `yaml:"proxy-url" json:"proxy-url"`
 
@@ -64,6 +65,14 @@ type SDKConfig struct {
 	// NonStreamKeepAliveInterval controls how often blank lines are emitted for non-streaming responses.
 	// <= 0 disables keep-alives. Value is in seconds.
 	NonStreamKeepAliveInterval int `yaml:"nonstream-keepalive-interval,omitempty" json:"nonstream-keepalive-interval,omitempty"`
+}
+
+type ClientConfig struct {
+	Codex CodexClientConfig `yaml:"codex" json:"codex"`
+}
+
+type CodexClientConfig struct {
+	ModelCatalogExcludePrefix string `yaml:"model-catalog-exclude-prefix" json:"model-catalog-exclude-prefix"`
 }
 
 // ClaudeCodeConfig configures Claude Code compatibility behavior.
