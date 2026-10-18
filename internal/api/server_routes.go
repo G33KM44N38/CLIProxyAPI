@@ -689,7 +689,9 @@ func (s *Server) handleHomeCodexClientModels(c *gin.Context, clientVersion strin
 	if clientVersion == "cpa" {
 		webSearchCapabilityForModel = homeWebSearchCapabilityForModel(entries)
 	}
-	s.writeModelListResponse(c, "openai", codexmodels.BuildResponseForClientWithCPACapabilities(models, nil, webSearchCapabilityForModel, s.cfg.Codex.OptimizeMultiAgentV2, clientVersion))
+	payload := codexmodels.BuildResponseForClientWithCPACapabilities(models, nil, webSearchCapabilityForModel, s.cfg.Codex.OptimizeMultiAgentV2, clientVersion)
+	payload["models"] = codexmodels.WithoutPrefixAliases(payload["models"].([]map[string]any), s.cfg.Client.Codex.ModelCatalogExcludePrefix)
+	s.writeModelListResponse(c, "openai", payload)
 }
 
 func homeWebSearchCapabilityForModel(entries []homeModelEntry) codexmodels.WebSearchCapabilityForModelFunc {
