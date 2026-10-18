@@ -138,6 +138,26 @@ PackyCode provides special discounts for our software users: register using <a h
 
 CLIProxyAPI Guides: [https://help.router-for.me/](https://help.router-for.me/)
 
+### Codex model catalog size
+
+Codex 0.163.0 limits an explicit `model_catalog_url` response to 1 MiB.
+Account-prefixed aliases can exceed this limit by repeating full model instructions.
+To omit those aliases from native Codex discovery, set:
+
+```yaml
+client:
+  codex:
+    model-catalog-exclude-prefix: "fleet-"
+```
+
+The setting matches the start of the prefix before `/` and omits an alias only
+when its exact unprefixed model is also in the catalog. An empty value keeps the
+default catalog. Alias-only models and unrelated prefixes remain available.
+Retained descriptors keep their instructions and capabilities unchanged.
+This affects native `client_version` catalog responses, including Home, not
+ordinary OpenAI discovery, inference routes, or account selection. Check the
+final HTTP response size; this option does not impose a general catalog size cap.
+
 ## Management API
 
 see [MANAGEMENT_API.md](https://help.router-for.me/management/api)

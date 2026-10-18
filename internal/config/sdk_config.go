@@ -85,6 +85,8 @@ type ClientConfig struct {
 
 // CodexClientConfig configures Codex client compatibility and the model catalog.
 type CodexClientConfig struct {
+	ModelCatalogExcludePrefix string `yaml:"model-catalog-exclude-prefix" json:"model-catalog-exclude-prefix"`
+
 	// OptimizeMultiAgentV2 optimizes official Codex multi-agent requests across providers.
 	// Default false leaves the client's multi-agent behavior unchanged.
 	OptimizeMultiAgentV2 bool `yaml:"optimize-multi-agent-v2" json:"optimize-multi-agent-v2"`
