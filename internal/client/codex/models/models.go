@@ -101,6 +101,26 @@ func MarshalCompact(payload any) ([]byte, error) {
 	return bytes.TrimRight(buf.Bytes(), "\n"), nil
 }
 
+func WithoutPrefixAliases(models []map[string]any, excludedPrefix string) []map[string]any {
+	if excludedPrefix == "" {
+		return models
+	}
+	slugs := make(map[string]struct{}, len(models))
+	for _, model := range models {
+		slugs[stringModelValue(model, "slug")] = struct{}{}
+	}
+	filtered := make([]map[string]any, 0, len(models))
+	for _, model := range models {
+		prefix, base, hasPrefix := strings.Cut(stringModelValue(model, "slug"), "/")
+		_, baseExists := slugs[base]
+		omit := hasPrefix && base != "" && baseExists && strings.HasPrefix(prefix, excludedPrefix)
+		if !omit {
+			filtered = append(filtered, model)
+		}
+	}
+	return filtered
+}
+
 func buildCodexClientModels(models []map[string]any, providersForModel ProvidersForModelFunc, webSearchCapabilityForModel WebSearchCapabilityForModelFunc, optimizeMultiAgentV2 bool, clientVersion string) []map[string]any {
 	return buildCodexClientModelsWithToolCapabilities(models, providersForModel, nil, webSearchCapabilityForModel, nil, nil, optimizeMultiAgentV2, clientVersion)
 }

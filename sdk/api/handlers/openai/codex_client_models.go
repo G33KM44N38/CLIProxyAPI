@@ -21,7 +21,11 @@ func (h *OpenAIAPIHandler) codexClientModelsResponse(clientVersion ...string) ma
 		toolSearchCapabilityForModel = h.SupportsNativeToolSearchModel
 	}
 	modelRegistry := registry.GetGlobalRegistry()
-	return codexmodels.BuildResponseForClientWithToolCapabilities(h.Models(), modelRegistry.GetModelProviders, modelRegistry.GetResponsesWebSearchCapability, applyPatchCapabilityForModel, toolSearchCapabilityForModel, optimizeMultiAgentV2, version)
+	payload := codexmodels.BuildResponseForClientWithToolCapabilities(h.Models(), modelRegistry.GetModelProviders, modelRegistry.GetResponsesWebSearchCapability, applyPatchCapabilityForModel, toolSearchCapabilityForModel, optimizeMultiAgentV2, version)
+	if h != nil && h.Cfg != nil {
+		payload["models"] = codexmodels.WithoutPrefixAliases(payload["models"].([]map[string]any), h.Cfg.Client.Codex.ModelCatalogExcludePrefix)
+	}
+	return payload
 }
 
 // CodexClientModelsResponse builds a Codex client model response.

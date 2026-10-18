@@ -61,9 +61,11 @@ func TestOpenAIModelsCodexCatalogExcludesConfiguredPrefixAliases(t *testing.T) {
 		t.Fatalf("default models = %d, want 52", len(original))
 	}
 	openAI := request("/v1/models")
-	if err := json.Unmarshal([]byte(`{"client":{"codex":{"model-catalog-exclude-prefixes":["fleet-"]}}}`), base.Cfg); err != nil {
+	updated, err := config.ParseConfigBytes([]byte("client: {codex: {model-catalog-exclude-prefix: fleet-}}\n"))
+	if err != nil {
 		t.Fatal(err)
 	}
+	base.UpdateClients(&updated.SDKConfig)
 	filtered := request("/v1/models?client_version=0.163.0")
 	if len(filtered) > 1<<20 {
 		t.Fatalf("filtered catalog = %d bytes, want <= 1048576", len(filtered))
@@ -82,5 +84,9 @@ func TestOpenAIModelsCodexCatalogExcludesConfiguredPrefixAliases(t *testing.T) {
 	}
 	if got := len(modelRegistry.GetAvailableModels("openai")); got != 52 {
 		t.Fatalf("registered routes = %d, want 52", got)
+	}
+	base.UpdateClients(&config.SDKConfig{})
+	if got := request("/v1/models?client_version=0.163.0"); string(got) != string(baseline) {
+		t.Fatal("clearing prefix exclusion did not restore the original native catalog")
 	}
 }
