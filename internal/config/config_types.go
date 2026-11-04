@@ -173,6 +173,8 @@ type AntigravityConnectionPoolConfig struct {
 
 // CodexConfig configures provider-wide Codex request behavior.
 type CodexConfig struct {
+	// AutoResetQuota redeems one existing reset credit only after every usable Codex account has exhausted its quota.
+	AutoResetQuota  bool `yaml:"auto-reset-quota" json:"auto-reset-quota"`
 	IdentityConfuse bool `yaml:"identity-confuse" json:"identity-confuse"`
 	// DisableCodexCloaking disables forcing the official Codex identity headers on HTTP/SSE and WebSocket requests.
 	DisableCodexCloaking bool `yaml:"disable-codex-cloaking" json:"disable-codex-cloaking"`

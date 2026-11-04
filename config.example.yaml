@@ -262,6 +262,8 @@ client:
     model-catalog-exclude-prefix: ""
 
 codex:
+  # Redeem one existing Codex reset credit only after all usable accounts exhaust their quotas.
+  auto-reset-quota: false
   # When true, and routing.strategy is fill-first or routing.session-affinity is true,
   # remap Codex prompt_cache_key and installation identity per selected auth.
   # Some superstitious users believe request tracking identifiers can be used
