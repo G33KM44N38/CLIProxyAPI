@@ -24,6 +24,7 @@ var codexClientModelsUpdaterOnce sync.Once
 // Safe to call multiple times; only one updater will run.
 func StartCodexClientModelsUpdater(ctx context.Context) {
 	codexClientModelsUpdaterOnce.Do(func() {
+		restoreCachedCatalog("codex_client_models.json")
 		go runCodexClientModelsUpdater(ctx)
 	})
 }
@@ -55,6 +56,9 @@ func tryRefreshCodexClientModels(ctx context.Context, label string) {
 	if err != nil {
 		log.Warnf("%s: fetched catalog rejected, keeping current data: %v", label, err)
 		return
+	}
+	if errCache := saveCachedCatalog("codex_client_models.json", data); errCache != nil {
+		log.Warn("Could not persist Codex model catalog; current models remain available")
 	}
 	if !changed {
 		log.Infof("%s completed from %s, no changes detected", label, sourceURL)

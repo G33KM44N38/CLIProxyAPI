@@ -77,6 +77,7 @@ func init() {
 // Safe to call multiple times; only one updater will run.
 func StartModelsUpdater(ctx context.Context) {
 	updaterOnce.Do(func() {
+		restoreCachedCatalog("models.json")
 		go runModelsUpdater(ctx)
 	})
 }
@@ -133,6 +134,11 @@ func tryRefreshModels(ctx context.Context, label string) {
 	modelsCatalogStore.mu.Lock()
 	modelsCatalogStore.data = parsed
 	modelsCatalogStore.mu.Unlock()
+	if data, errEncode := json.Marshal(parsed); errEncode == nil {
+		if errCache := saveCachedCatalog("models.json", data); errCache != nil {
+			log.Warn("Could not persist model catalog; current models remain available")
+		}
+	}
 
 	if len(changed) == 0 {
 		log.Infof("%s completed from %s, no changes detected", label, url)
@@ -350,12 +356,18 @@ func validateModelsCatalog(data *staticModelsJSON) error {
 		{name: "antigravity", models: data.Antigravity},
 		{name: "xai", models: data.XAI},
 		{name: "meta", models: data.Meta},
+		{name: "devin", models: data.Devin},
 	}
 
+	count := 0
 	for _, section := range requiredSections {
+		count += len(section.models)
 		if err := validateModelSection(section.name, section.models); err != nil {
 			return err
 		}
+	}
+	if count == 0 {
+		return fmt.Errorf("model catalog contains no models")
 	}
 	return nil
 }
