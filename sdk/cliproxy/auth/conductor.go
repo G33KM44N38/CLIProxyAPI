@@ -141,6 +141,11 @@ type Manager struct {
 	mu                        sync.RWMutex
 	selectorMu                sync.Mutex
 	configCooldownMu          sync.Mutex
+	codexResetMu              sync.Mutex
+	codexResetRetryAfter      time.Time
+	codexResetGeneration      atomic.Uint64
+	codexResetRequests        map[string]string
+	codexResetBackoff         map[string]time.Time
 	auths                     map[string]*Auth
 	authEpochs                map[string]uint64
 	scheduler                 *authScheduler
