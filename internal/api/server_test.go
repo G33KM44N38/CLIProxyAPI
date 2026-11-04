@@ -2178,8 +2178,12 @@ func TestModelsWithClientVersionReturnsCodexCatalog(t *testing.T) {
 		t.Fatalf("custom context_window = %v, want 123456", custom["context_window"])
 	}
 	assertCodexSupportedReasoningLevels(t, custom, []string{"none", "minimal", "low", "medium", "high", "xhigh"})
-	if custom["base_instructions"] != gpt55["base_instructions"] {
-		t.Fatal("expected custom model to use gpt-5.5 base_instructions fallback")
+	if custom["base_instructions"] != "You are Codex, a coding agent. You and the user share one workspace." {
+		t.Fatalf("unexpected synthetic instructions: %v", custom["base_instructions"])
+	}
+	messages, ok := custom["model_messages"].(map[string]any)
+	if !ok || messages["instructions_template"] != custom["base_instructions"] {
+		t.Fatal("synthetic instructions_template must match base_instructions")
 	}
 	if _, ok := custom["available_in_plans"].([]any); !ok {
 		t.Fatalf("expected custom model to use gpt-5.5 available_in_plans fallback, got %#v", custom["available_in_plans"])
@@ -2191,14 +2195,14 @@ func TestModelsWithClientVersionReturnsCodexCatalog(t *testing.T) {
 	if !ok || len(customServiceTiers) != 0 {
 		t.Fatalf("expected custom model service_tiers = [], got %#v", custom["service_tiers"])
 	}
-	if _, ok := custom["apply_patch_tool_type"]; ok {
-		t.Fatal("expected custom model to omit apply_patch_tool_type")
+	if value, present := custom["apply_patch_tool_type"]; !present || value != nil {
+		t.Fatal("expected custom model apply_patch_tool_type to be present as null")
 	}
-	if _, ok := custom["upgrade"]; ok {
-		t.Fatal("expected custom model to omit upgrade")
+	if value, present := custom["upgrade"]; !present || value != nil {
+		t.Fatal("expected custom model upgrade to be present as null")
 	}
-	if _, ok := custom["availability_nux"]; ok {
-		t.Fatal("expected custom model to omit availability_nux")
+	if value, present := custom["availability_nux"]; !present || value != nil {
+		t.Fatal("expected custom model availability_nux to be present as null")
 	}
 
 	hiddenModels := map[string]bool{
