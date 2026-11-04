@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+import subprocess
 import unittest
 
 from traffic_bridge import Bridge
@@ -8,6 +9,7 @@ class Firewall:
     def __init__(self):
         self.rules = set()
         self.fail = None
+        self.timeout_after = None
 
     def run(self, arguments):
         action, chain = arguments[:2]
@@ -21,6 +23,9 @@ class Firewall:
             self.rules.add(entry)
         elif action == '-D':
             self.rules.remove(entry)
+        if self.timeout_after == (action, chain):
+            self.timeout_after = None
+            raise subprocess.TimeoutExpired('iptables', 10)
         return SimpleNamespace(returncode=0)
 
 
@@ -61,6 +66,29 @@ class TrafficBridgeTests(unittest.TestCase):
         for address, source, target in [('100.75.113.60', 8317, 8317), ('8.8.8.8', 8317, 18317)]:
             with self.assertRaises(ValueError):
                 Bridge(address, source, target)
+
+    def test_timeout_after_install_restores_even_the_last_attempted_rule(self):
+        unrelated = ('OUTPUT', ('unrelated-rule',))
+        self.firewall.rules.add(unrelated)
+        self.firewall.timeout_after = ('-I', 'OUTPUT')
+        with self.assertRaises(subprocess.TimeoutExpired):
+            self.bridge.update(True, self.firewall.run)
+        self.assertEqual(self.firewall.rules, {unrelated})
+
+    def test_timeout_after_removal_restores_both_original_rules(self):
+        self.bridge.update(True, self.firewall.run)
+        before = self.firewall.rules.copy()
+        self.firewall.timeout_after = ('-D', 'OUTPUT')
+        with self.assertRaises(subprocess.TimeoutExpired):
+            self.bridge.update(False, self.firewall.run)
+        self.assertEqual(self.firewall.rules, before)
+
+    def test_timeout_during_successful_rollback_is_verified_before_reporting_failure(self):
+        self.firewall.fail = ('-I', 'OUTPUT')
+        self.firewall.timeout_after = ('-D', 'PREROUTING')
+        with self.assertRaisesRegex(RuntimeError, 'Cannot update the NAT bridge: OUTPUT'):
+            self.bridge.update(True, self.firewall.run)
+        self.assertEqual(self.bridge.status(self.firewall.run), {'PREROUTING': False, 'OUTPUT': False})
 
 
 if __name__ == '__main__':

@@ -50,23 +50,29 @@ class Bridge:
 
     def update(self, enabled, execute=run):
         before = self.status(execute)
-        changed = []
+        attempted = []
         try:
             for chain, exists in before.items():
                 if exists == enabled:
                     continue
                 operation = ['-I', chain, '1'] if enabled else ['-D', chain]
+                attempted.append(chain)
                 if execute([*operation, *self.rule()]).returncode:
                     raise RuntimeError('Cannot update the NAT bridge: ' + chain)
-                changed.append(chain)
             after = self.status(execute)
             if any(value != enabled for value in after.values()):
                 raise RuntimeError('NAT bridge did not reach the requested state')
             return after
         except Exception:
-            for chain in reversed(changed):
-                operation = ['-D', chain] if enabled else ['-I', chain, '1']
-                if execute([*operation, *self.rule()]).returncode:
+            for chain in reversed(attempted):
+                if self.status(execute)[chain] == before[chain]:
+                    continue
+                operation = ['-I', chain, '1'] if before[chain] else ['-D', chain]
+                try:
+                    restored = execute([*operation, *self.rule()]).returncode == 0
+                except Exception:
+                    restored = False
+                if not restored and self.status(execute)[chain] != before[chain]:
                     raise RuntimeError('NAT bridge rollback failed; inspect both chains') from None
             raise
 
