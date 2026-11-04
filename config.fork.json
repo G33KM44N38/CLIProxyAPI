@@ -1,0 +1,28 @@
+{
+  "host": "127.0.0.1",
+  "port": 8317,
+  "auth-dir": "./auth",
+  "api-keys": [],
+  "remote-management": {
+    "allow-remote": false,
+    "secret-key": "",
+    "disable-control-panel": false,
+    "disable-auto-update-panel": true,
+    "panel-github-repository": "https://github.com/G33KM44N38/Cli-Proxy-API-Management-Center"
+  },
+  "routing": {"strategy": "fill-first", "session-affinity": false},
+  "codex": {
+    "model-level-cooling": true,
+    "stream-bootstrap-buffering": true,
+    "identity-confuse": false
+  },
+  "streaming": {"bootstrap-retries": 0},
+  "request-retry": 5,
+  "max-retry-interval": 60,
+  "transient-error-cooldown-seconds": 5,
+  "client": {"codex": {"model-catalog-exclude-prefix": "fleet-"}},
+  "usage-statistics-enabled": true,
+  "request-log": false,
+  "logging-to-file": false,
+  "plugins": {"enabled": false}
+}
