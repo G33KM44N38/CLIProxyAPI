@@ -52,6 +52,7 @@ def install(prefix, binary, panel, plugin=None, port=8317):
                   'model = "gpt-6.1-sol"\nmodel_provider = "personal-proxy"\n\n'
                   '[model_providers.personal-proxy]\nname = "Personal CLIProxyAPI"\n'
                   f'base_url = "http://127.0.0.1:{port}/v1"\nwire_api = "responses"\n'
+                  f'model_catalog_url = "http://127.0.0.1:{port}/v1/models"\n'
                   'experimental_bearer_token = ' + json.dumps(key) + '\n'
                   'request_max_retries = 4\nstream_max_retries = 5\n'
                   'supports_websockets = false\n')

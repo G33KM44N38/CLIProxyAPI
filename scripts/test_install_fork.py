@@ -29,6 +29,7 @@ class InstallForkTests(unittest.TestCase):
             self.assertEqual((codex['request_max_retries'], codex['stream_max_retries']), (4, 5))
             self.assertEqual(codex['experimental_bearer_token'], config['api-keys'][0])
             self.assertEqual(codex['base_url'], 'http://127.0.0.1:18317/v1')
+            self.assertEqual(codex['model_catalog_url'], 'http://127.0.0.1:18317/v1/models')
             self.assertEqual((prefix / 'config/static/management.html').read_bytes(), panel.read_bytes())
             self.assertEqual((prefix / 'config/config.json').stat().st_mode & 0o777, 0o600)
             self.assertFalse(result['service_started'])

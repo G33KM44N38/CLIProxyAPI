@@ -57,9 +57,6 @@ def verify(binary, panel, codex):
                 assert active['max-retry-interval'] == 60
                 assert active['routing']['strategy'] == 'fill-first'
                 assert active['codex']['stream-bootstrap-buffering'] is True
-                config_path = prefix / 'codex/config.toml'
-                with config_path.open('a') as stream:
-                    stream.write('model_catalog_url = ' + json.dumps(endpoint + '/v1/models') + '\n')
                 environment = dict(os.environ, CODEX_HOME=str(prefix / 'codex'))
                 for key in ('OPENAI_API_KEY', 'CODEX_API_KEY'):
                     environment.pop(key, None)
