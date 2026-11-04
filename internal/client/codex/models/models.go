@@ -2,6 +2,7 @@
 package models
 
 import (
+	"bytes"
 	"encoding/json"
 	"sort"
 	"strconv"
@@ -67,6 +68,28 @@ func BuildResponseForClient(availableModels []map[string]any, providersForModel 
 func BuildResponseForClientWithCPACapabilities(availableModels []map[string]any, providersForModel ProvidersForModelFunc, webSearchCapabilityForModel WebSearchCapabilityForModelFunc, optimizeMultiAgentV2 bool, clientVersion string) map[string]any {
 	return map[string]any{
 		"models": buildCodexClientModels(availableModels, providersForModel, webSearchCapabilityForModel, optimizeMultiAgentV2, clientVersion),
+	}
+}
+
+// MarshalCompact preserves descriptors without expanding instruction markup.
+func MarshalCompact(payload any) ([]byte, error) {
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(payload); err != nil {
+		return nil, err
+	}
+	return bytes.TrimRight(buffer.Bytes(), "\n"), nil
+}
+
+const codexClientFallbackInstructions = "You are Codex, a coding agent. You and the user share one workspace."
+
+func useCompactCodexClientInstructions(entry map[string]any) {
+	entry["base_instructions"] = codexClientFallbackInstructions
+	entry["model_messages"] = map[string]any{
+		"instructions_template":  codexClientFallbackInstructions,
+		"instructions_variables": nil, "approvals": nil, "collaboration_modes": nil,
+		"auto_review": nil, "permissions": nil, "multi_agent": nil,
 	}
 }
 
@@ -455,10 +478,10 @@ func applyCodexClientProviderCapabilities(entry map[string]any, id string, isTem
 	if providersForModel != nil && !isPureCodexProvider(id, providersForModel) {
 		entry["supports_search_tool"] = false
 		entry["prefer_websockets"] = false
-		delete(entry, "apply_patch_tool_type")
+		entry["apply_patch_tool_type"] = nil
 		entry["service_tiers"] = []any{}
-		delete(entry, "upgrade")
-		delete(entry, "availability_nux")
+		entry["upgrade"] = nil
+		entry["availability_nux"] = nil
 		return
 	}
 	applyCodexClientSearchToolSupport(entry, id, isTemplate, providersForModel)
@@ -519,6 +542,7 @@ func applyCodexClientSearchToolSupport(entry map[string]any, id string, template
 }
 
 func applyCodexClientModelMetadata(entry map[string]any, id string, model map[string]any, optimizeMultiAgentV2 bool, clientVersion string) {
+	useCompactCodexClientInstructions(entry)
 	info := registry.LookupModelInfo(id)
 
 	displayName := stringModelValue(model, "display_name")
@@ -568,9 +592,9 @@ func applyCodexClientModelMetadata(entry map[string]any, id string, model map[st
 		entry["multi_agent_version"] = "v2"
 	}
 	entry["service_tiers"] = []any{}
-	delete(entry, "apply_patch_tool_type")
-	delete(entry, "upgrade")
-	delete(entry, "availability_nux")
+	entry["apply_patch_tool_type"] = nil
+	entry["upgrade"] = nil
+	entry["availability_nux"] = nil
 
 	if contextWindow > 0 {
 		entry["context_window"] = contextWindow
