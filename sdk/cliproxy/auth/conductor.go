@@ -143,6 +143,7 @@ type Manager struct {
 	configCooldownMu          sync.Mutex
 	codexResetMu              sync.Mutex
 	codexQuotaPollMu          sync.Mutex
+	codexQuotaPollTimeout     time.Duration
 	codexQuotaPollInFlight    map[string]chan struct{}
 	codexQuotaPollSlots       chan struct{}
 	codexResetRetryAfter      time.Time

@@ -330,3 +330,76 @@ func TestCodexQuotaPollRepairsFutureObservation(t *testing.T) {
 		t.Fatal("fresh background observation could not replace invalid future snapshot")
 	}
 }
+
+func TestCodexQuotaPollTimeoutRetriesOnNextTick(t *testing.T) {
+	for _, mode := range []string{"headers", "body"} {
+		t.Run(mode, func(t *testing.T) {
+			var calls atomic.Int32
+			started := make(chan struct{})
+			canceled := make(chan struct{})
+			recovered := make(chan struct{})
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if calls.Add(1) == 1 {
+					if mode == "body" {
+						w.Header().Set("Content-Type", "application/json")
+						_, _ = fmt.Fprint(w, `{"rate_limit":`)
+						w.(http.Flusher).Flush()
+					}
+					close(started)
+					<-r.Context().Done()
+					close(canceled)
+					return
+				}
+				_, _ = fmt.Fprint(w, `{"rate_limit":{"allowed":true,"primary_window":{"used_percent":10,"reset_after_seconds":2000}}}`)
+				close(recovered)
+			}))
+			defer server.Close()
+			base, _ := url.Parse(server.URL)
+			m := NewManager(nil, &SoonestResetFirstSelector{}, nil)
+			m.codexQuotaPollTimeout = 50 * time.Millisecond
+			m.RegisterExecutor(&codexResetExecutor{base: base})
+			a := resetTestAuth("timeout-retry", 0, time.Now().Add(time.Hour))
+			a.Metadata = map[string]any{"account_id": a.ID, "access_token": "fixture"}
+			if _, err := m.Register(context.Background(), a); err != nil {
+				t.Fatal(err)
+			}
+			before, _ := m.GetByID(a.ID)
+			ticks := make(chan time.Time)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			stopped := make(chan struct{})
+			go func() { m.runCodexQuotaPollingTicks(ctx, ticks); close(stopped) }()
+			wait := func(ch <-chan struct{}, message string) {
+				t.Helper()
+				select {
+				case <-ch:
+				case <-time.After(time.Second):
+					t.Fatal(message)
+				}
+			}
+			wait(started, "quota GET did not start")
+			wait(canceled, "blocked quota GET did not time out")
+			waitCodexQuotaPolls(t, m)
+			after, _ := m.GetByID(a.ID)
+			if !after.Quota.ObservedAt.Equal(before.Quota.ObservedAt) {
+				t.Fatal("timed-out probe changed cached quota")
+			}
+			m.codexQuotaPollMu.Lock()
+			pending := len(m.codexQuotaPollInFlight)
+			slots := len(m.codexQuotaPollSlots)
+			m.codexQuotaPollMu.Unlock()
+			if pending != 0 || slots != 0 {
+				t.Fatalf("timeout leaked pending=%d slots=%d", pending, slots)
+			}
+			ticks <- time.Now()
+			wait(recovered, "next quota tick did not retry account")
+			waitCodexQuotaPolls(t, m)
+			after, _ = m.GetByID(a.ID)
+			if calls.Load() != 2 || !after.Quota.ObservedAt.After(before.Quota.ObservedAt) || after.Quota.Signals["X-Codex-Primary-Reset-After-Seconds"] != "2000" {
+				t.Fatal("retry did not publish a fresh quota snapshot")
+			}
+			cancel()
+			wait(stopped, "quota poll loop did not stop")
+		})
+	}
+}

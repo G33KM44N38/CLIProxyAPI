@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	codexQuotaPollInterval      = 60 * time.Second
-	codexQuotaObservationMaxAge = 600 * time.Second
+	codexQuotaPollInterval       = 60 * time.Second
+	codexQuotaPollDefaultTimeout = 10 * time.Second
+	codexQuotaObservationMaxAge  = 600 * time.Second
 )
 
 // This loop shares the auth-refresh lifecycle, but only performs read-only usage
@@ -63,6 +64,10 @@ func (m *Manager) pollCodexQuotas(ctx context.Context) []<-chan struct{} {
 		m.mu.RUnlock()
 		return nil
 	}
+	timeout := m.codexQuotaPollTimeout
+	if timeout <= 0 {
+		timeout = codexQuotaPollDefaultTimeout
+	}
 	accounts := make([]*Auth, 0, len(m.auths))
 	now := time.Now()
 	for _, a := range m.auths {
@@ -107,9 +112,12 @@ func (m *Manager) pollCodexQuotas(ctx context.Context) []<-chan struct{} {
 			if ctx.Err() != nil {
 				return
 			}
+			// Bound this read-only probe through response-body decoding as well.
+			probeCtx, cancelProbe := context.WithTimeout(ctx, timeout)
+			defer cancelProbe()
 			observedAt := time.Now()
 			var usage codexPollingUsage
-			if err := codexQuotaRequest(ctx, executor, a, http.MethodGet, "usage", nil, &usage); err != nil {
+			if err := codexQuotaRequest(probeCtx, executor, a, http.MethodGet, "usage", nil, &usage); err != nil {
 				return
 			}
 			headers := usage.headers()
@@ -121,7 +129,7 @@ func (m *Manager) pollCodexQuotas(ctx context.Context) []<-chan struct{} {
 			publishedAt := time.Now()
 			// A removed/replaced/refreshed credential or a newer response wins. Only
 			// observation fields are changed, never availability or generation state.
-			if ctx.Err() == nil && selectorUsesResetOrder(m.selector) && codexQuotaPollEligible(current, publishedAt) && current.RegistrationEpoch == a.RegistrationEpoch && current.Generation == a.Generation && (!current.Quota.ObservedAt.After(observedAt) || current.Quota.ObservedAt.After(publishedAt)) {
+			if probeCtx.Err() == nil && selectorUsesResetOrder(m.selector) && codexQuotaPollEligible(current, publishedAt) && current.RegistrationEpoch == a.RegistrationEpoch && current.Generation == a.Generation && (!current.Quota.ObservedAt.After(observedAt) || current.Quota.ObservedAt.After(publishedAt)) {
 				current.Quota.ObserveResponseHeadersForProvider("codex", headers, observedAt)
 			}
 			m.mu.Unlock()
