@@ -142,6 +142,9 @@ type Manager struct {
 	selectorMu                sync.Mutex
 	configCooldownMu          sync.Mutex
 	codexResetMu              sync.Mutex
+	codexQuotaPollMu          sync.Mutex
+	codexQuotaPollInFlight    map[string]chan struct{}
+	codexQuotaPollSlots       chan struct{}
 	codexResetRetryAfter      time.Time
 	codexResetGeneration      atomic.Uint64
 	codexResetRequests        map[string]string

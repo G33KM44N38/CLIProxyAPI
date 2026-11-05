@@ -36,8 +36,8 @@ func TestSoonestResetFirstOrder(t *testing.T) {
 			a.Quota.Signals["X-Codex-Secondary-Reset-At"] = strconv.FormatInt(now.Add(time.Minute).Unix(), 10)
 		}, "a"},
 		{"relative anchored to observation", func(a, b *Auth) {
-			a.Quota.ObservedAt = now.Add(-time.Hour)
-			a.Quota.Signals = map[string]string{"X-Codex-Primary-Reset-After-Seconds": "3660"}
+			a.Quota.ObservedAt = now.Add(-time.Minute)
+			a.Quota.Signals = map[string]string{"X-Codex-Primary-Reset-After-Seconds": "120"}
 		}, "a"},
 		{"consumed window is not a renewal deadline", func(a, b *Auth) {
 			a.Quota.Signals["X-Codex-Primary-Reset-At"] = strconv.FormatInt(now.Add(time.Minute).Unix(), 10)

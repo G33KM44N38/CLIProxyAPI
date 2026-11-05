@@ -60,6 +60,9 @@ func codexSoonestReset(candidate *Auth, now time.Time) time.Time {
 		return time.Time{}
 	}
 	q := candidate.Quota
+	if q.ObservedAt.IsZero() || q.ObservedAt.After(now) || now.Sub(q.ObservedAt) > codexQuotaObservationMaxAge {
+		return time.Time{}
+	}
 	var earliest time.Time
 	// Only credential-wide primary/secondary budgets apply here. Named additional
 	// limits and code-review quotas belong to other routes and must not rank them.
