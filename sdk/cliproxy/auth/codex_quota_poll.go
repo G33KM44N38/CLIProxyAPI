@@ -118,9 +118,10 @@ func (m *Manager) pollCodexQuotas(ctx context.Context) []<-chan struct{} {
 			}
 			m.mu.Lock()
 			current := m.auths[a.ID]
+			publishedAt := time.Now()
 			// A removed/replaced/refreshed credential or a newer response wins. Only
 			// observation fields are changed, never availability or generation state.
-			if ctx.Err() == nil && selectorUsesResetOrder(m.selector) && codexQuotaPollEligible(current, time.Now()) && current.RegistrationEpoch == a.RegistrationEpoch && current.Generation == a.Generation && !current.Quota.ObservedAt.After(observedAt) {
+			if ctx.Err() == nil && selectorUsesResetOrder(m.selector) && codexQuotaPollEligible(current, publishedAt) && current.RegistrationEpoch == a.RegistrationEpoch && current.Generation == a.Generation && (!current.Quota.ObservedAt.After(observedAt) || current.Quota.ObservedAt.After(publishedAt)) {
 				current.Quota.ObserveResponseHeadersForProvider("codex", headers, observedAt)
 			}
 			m.mu.Unlock()

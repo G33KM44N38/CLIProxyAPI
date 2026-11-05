@@ -203,7 +203,7 @@ func TestCodexQuotaPollDiscardsStaleResults(t *testing.T) {
 				_, _ = m.Update(context.Background(), a)
 			case "newer-response":
 				m.mu.Lock()
-				m.auths[a.ID].Quota.ObserveResponseHeadersForProvider("codex", http.Header{"X-Codex-Primary-Reset-After-Seconds": {"42"}}, time.Now().Add(time.Second))
+				m.auths[a.ID].Quota.ObserveResponseHeadersForProvider("codex", http.Header{"X-Codex-Primary-Reset-After-Seconds": {"42"}}, time.Now())
 				m.mu.Unlock()
 			case "cancel":
 				cancel()
@@ -302,4 +302,31 @@ func TestCodexQuotaSlowAccountDoesNotBlockNextRound(t *testing.T) {
 	}
 	releaseSlow()
 	waitCodexQuotaPolls(t, m)
+}
+
+func TestCodexQuotaPollRepairsFutureObservation(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprint(w, `{"rate_limit":{"allowed":true,"primary_window":{"used_percent":10,"reset_after_seconds":2000}}}`)
+	}))
+	defer server.Close()
+	base, _ := url.Parse(server.URL)
+	m := NewManager(nil, &SoonestResetFirstSelector{}, nil)
+	m.RegisterExecutor(&codexResetExecutor{base: base})
+	a := resetTestAuth("future-observation", 0, time.Now().Add(7*24*time.Hour))
+	a.Quota.ObservedAt = time.Now().Add(time.Hour)
+	a.Metadata = map[string]any{"account_id": a.ID, "access_token": "fixture"}
+	if _, err := m.Register(context.Background(), a); err != nil {
+		t.Fatal(err)
+	}
+	for _, ch := range m.pollCodexQuotas(context.Background()) {
+		select {
+		case <-ch:
+		case <-time.After(2 * time.Second):
+			t.Fatal("quota poll did not finish")
+		}
+	}
+	got, _ := m.GetByID(a.ID)
+	if got.Quota.ObservedAt.After(time.Now()) || codexSoonestReset(got, time.Now()).IsZero() {
+		t.Fatal("fresh background observation could not replace invalid future snapshot")
+	}
 }
