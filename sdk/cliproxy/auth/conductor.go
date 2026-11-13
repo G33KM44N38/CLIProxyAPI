@@ -214,6 +214,12 @@ type Manager struct {
 	// Optional HTTP RoundTripper provider injected by host.
 	rtProvider RoundTripperProvider
 
+	// Read-only quota recovery probes share the auth-refresh lifecycle.
+	codexQuotaPollMu       sync.Mutex
+	codexQuotaPollInFlight map[string]chan struct{}
+	codexQuotaPollSlots    chan struct{}
+	codexQuotaPollTimeout  time.Duration
+
 	// Auto refresh state
 	refreshCancel context.CancelFunc
 	refreshLoop   *authAutoRefreshLoop

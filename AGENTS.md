@@ -57,7 +57,18 @@ go build -o test-output ./cmd/server && rm test-output # Verify compile (REQUIRE
 - Wrap defer errors: `defer func() { if err := f.Close(); err != nil { log.Errorf(...) } }()`
 - Use logrus structured logging; avoid leaking secrets/tokens in logs
 - Avoid panics in HTTP handlers; prefer logged errors and meaningful HTTP status codes
-- Timeouts are allowed only during credential acquisition; after an upstream connection is established, do not set timeouts for any subsequent network behavior. Intentional exceptions that must remain allowed are the Codex websocket liveness deadlines in `internal/runtime/executor/codex_websockets_executor.go`, the wsrelay session deadlines in `internal/wsrelay/session.go`, the management APICall timeout in `internal/api/handlers/management/api_tools.go`, and the `cmd/fetch_antigravity_models` utility timeouts
+- Timeouts are allowed only during credential acquisition; after an upstream connection is established, do not set timeouts for any subsequent network behavior. Intentional exceptions that must remain allowed are the Codex websocket liveness deadlines in `internal/runtime/executor/codex_websockets_executor.go`, the wsrelay session deadlines in `internal/wsrelay/session.go`, the management APICall timeout in `internal/api/handlers/management/api_tools.go`, the bounded read-only quota recovery probe in `sdk/cliproxy/auth/codex_quota_poll.go`, and the `cmd/fetch_antigravity_models` utility timeouts
 - Avoid wall-clock `time.Sleep` in TTL, expiration, ordering, or cache-eviction unit tests due to platform timer granularity (e.g. Windows default timer resolution of ~15.6ms) and CI jitter under load; prefer controllable clocks (`nowFunc` / mock clock), explicit timestamp manipulation, or deterministic synchronization primitives.
 - Note: if modifying features that involve CLIProxyAPIHome, check if corresponding updates are needed in the CLIProxyAPIHome repository.
 - Endpoints under the `/v0/management` base URL are deprecated and no longer maintained. For any feature changes, do not modify endpoints under `/v0/management` unless necessary to fix compilation errors.
+
+## Fork delivery
+
+For proxy changes in this fork, validation authorizes committing the scoped changes
+and pushing them to `origin/main` without another confirmation. Integrate work from
+feature or maintenance branches into `main`, preserving unrelated work. Run the
+relevant checks before pushing and verify that the remote `main` SHA contains the
+validated changes. Report delivery complete only after that verification; if a
+check or push fails, report the blocker and leave the work available for recovery.
+Use a normal push and resolve remote updates without force-pushing. Deployment
+still requires the user's authorization.

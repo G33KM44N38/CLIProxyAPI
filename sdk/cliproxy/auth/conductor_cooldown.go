@@ -461,6 +461,11 @@ func dedupeStrings(values []string) []string {
 
 // ResetQuota clears quota/cooldown state for an auth and resumes registry routing.
 func (m *Manager) ResetQuota(ctx context.Context, authID string) (*Auth, []string, error) {
+	return m.resetQuotaIf(ctx, authID, nil)
+}
+
+// resetQuotaIf validates an observation under the same lock as the reset.
+func (m *Manager) resetQuotaIf(ctx context.Context, authID string, eligible func(*Auth) bool) (*Auth, []string, error) {
 	if m == nil {
 		return nil, nil, nil
 	}
@@ -479,7 +484,7 @@ func (m *Manager) ResetQuota(ctx context.Context, authID string) (*Auth, []strin
 	defer releaseMutation()
 	m.mu.Lock()
 	auth, ok := m.auths[authID]
-	if !ok || auth == nil {
+	if !ok || auth == nil || (eligible != nil && !eligible(auth)) {
 		m.mu.Unlock()
 		return nil, nil, nil
 	}
